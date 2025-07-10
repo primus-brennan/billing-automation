@@ -69,68 +69,84 @@
             </div>
             
             <div class="modal-body">
-                <p>Customer <strong id="customer-name"></strong> needs pricing setup.</p>
+                <p>Customer <strong id="customer-name"></strong> was found in the shipment report but doesn't have pricing configured yet.</p>
+                <p class="help-text">Please set up the pricing structure for this customer:</p>
                 
                 <div class="pricing-form">
                     <div class="form-group">
-                        <label>LTL Pricing Tiers:</label>
+                        <label>🚛 LTL (Less Than Truckload) Pricing:</label>
+                        <p class="field-description">Set rates per shipment based on volume tiers</p>
                         <div class="tier-inputs">
-                            <div class="tier">
-                                <input type="number" id="ltl-tier1-min" placeholder="Min" value="0">
-                                <input type="number" id="ltl-tier1-max" placeholder="Max" value="50">
-                                <input type="number" id="ltl-tier1-rate" placeholder="Rate" value="25" step="0.01">
+                            <div class="tier-header">
+                                <span>Shipments</span>
+                                <span>to</span>
+                                <span>Rate ($)</span>
                             </div>
                             <div class="tier">
-                                <input type="number" id="ltl-tier2-min" placeholder="Min" value="51">
-                                <input type="number" id="ltl-tier2-max" placeholder="Max" value="100">
-                                <input type="number" id="ltl-tier2-rate" placeholder="Rate" value="20" step="0.01">
+                                <input type="number" id="ltl-tier1-min" placeholder="0" value="0">
+                                <input type="number" id="ltl-tier1-max" placeholder="50" value="50">
+                                <input type="number" id="ltl-tier1-rate" placeholder="25.00" value="25" step="0.01">
                             </div>
                             <div class="tier">
-                                <input type="number" id="ltl-tier3-min" placeholder="Min" value="101">
-                                <input type="text" id="ltl-tier3-max" placeholder="Max" value="unlimited" readonly>
-                                <input type="number" id="ltl-tier3-rate" placeholder="Rate" value="15" step="0.01">
+                                <input type="number" id="ltl-tier2-min" placeholder="51" value="51">
+                                <input type="number" id="ltl-tier2-max" placeholder="100" value="100">
+                                <input type="number" id="ltl-tier2-rate" placeholder="20.00" value="20" step="0.01">
+                            </div>
+                            <div class="tier">
+                                <input type="number" id="ltl-tier3-min" placeholder="101" value="101">
+                                <input type="text" id="ltl-tier3-max" placeholder="unlimited" value="unlimited" readonly>
+                                <input type="number" id="ltl-tier3-rate" placeholder="15.00" value="15" step="0.01">
                             </div>
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label>Small Package Pricing Tiers:</label>
+                        <label>📦 Small Package Pricing:</label>
+                        <p class="field-description">Set rates per package based on volume tiers</p>
                         <div class="tier-inputs">
-                            <div class="tier">
-                                <input type="number" id="sp-tier1-min" placeholder="Min" value="0">
-                                <input type="number" id="sp-tier1-max" placeholder="Max" value="500">
-                                <input type="number" id="sp-tier1-rate" placeholder="Rate" value="2" step="0.01">
+                            <div class="tier-header">
+                                <span>Packages</span>
+                                <span>to</span>
+                                <span>Rate ($)</span>
                             </div>
                             <div class="tier">
-                                <input type="number" id="sp-tier2-min" placeholder="Min" value="501">
-                                <input type="number" id="sp-tier2-max" placeholder="Max" value="1000">
-                                <input type="number" id="sp-tier2-rate" placeholder="Rate" value="1.5" step="0.01">
+                                <input type="number" id="sp-tier1-min" placeholder="0" value="0">
+                                <input type="number" id="sp-tier1-max" placeholder="500" value="500">
+                                <input type="number" id="sp-tier1-rate" placeholder="2.00" value="2" step="0.01">
                             </div>
                             <div class="tier">
-                                <input type="number" id="sp-tier3-min" placeholder="Min" value="1001">
-                                <input type="text" id="sp-tier3-max" placeholder="Max" value="unlimited" readonly>
-                                <input type="number" id="sp-tier3-rate" placeholder="Rate" value="1" step="0.01">
+                                <input type="number" id="sp-tier2-min" placeholder="501" value="501">
+                                <input type="number" id="sp-tier2-max" placeholder="1000" value="1000">
+                                <input type="number" id="sp-tier2-rate" placeholder="1.50" value="1.5" step="0.01">
+                            </div>
+                            <div class="tier">
+                                <input type="number" id="sp-tier3-min" placeholder="1001" value="1001">
+                                <input type="text" id="sp-tier3-max" placeholder="unlimited" value="unlimited" readonly>
+                                <input type="number" id="sp-tier3-rate" placeholder="1.00" value="1" step="0.01">
                             </div>
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="storage-fee">Storage Fee:</label>
-                        <input type="number" id="storage-fee" placeholder="0" step="0.01">
+                        <label for="storage-fee">🏪 Monthly Storage Fee:</label>
+                        <p class="field-description">Fixed monthly charge for storage services</p>
+                        <input type="number" id="storage-fee" placeholder="0.00" step="0.01">
                     </div>
                     
                     <div class="form-group">
-                        <label for="contract-minimum">Contract Minimum:</label>
-                        <input type="number" id="contract-minimum" placeholder="0" step="0.01">
+                        <label for="contract-minimum">💰 Contract Minimum:</label>
+                        <p class="field-description">Minimum monthly billing amount (optional)</p>
+                        <input type="number" id="contract-minimum" placeholder="0.00" step="0.01">
                     </div>
                     
                     <div class="form-group">
-                        <label for="payment-method">Payment Method:</label>
+                        <label for="payment-method">📋 Payment Terms:</label>
+                        <p class="field-description">Invoice payment terms</p>
                         <select id="payment-method">
-                            <option value="Net 30">Net 30</option>
-                            <option value="Net 15">Net 15</option>
+                            <option value="Net 30">Net 30 Days</option>
+                            <option value="Net 15">Net 15 Days</option>
                             <option value="Due on Receipt">Due on Receipt</option>
-                            <option value="COD">COD</option>
+                            <option value="COD">Cash on Delivery</option>
                         </select>
                     </div>
                 </div>

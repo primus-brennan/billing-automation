@@ -372,11 +372,26 @@ class BillingApp {
             this.hideLoading();
 
             if (data.errors && (data.errors.missing_customers.length > 0 || data.errors.unmapped_customers.length > 0)) {
-                this.showError(data.errors);
+                // Filter out invalid customer names from errors
+                const validMissingCustomers = data.errors.missing_customers.filter(name => 
+                    this.isValidCustomerName(name)
+                );
                 
-                // Show customer pricing setup for missing customers
-                if (data.errors.missing_customers.length > 0) {
-                    this.showCustomerPricingSetup(data.errors.missing_customers[0]);
+                const validUnmappedCustomers = data.errors.unmapped_customers.filter(name => 
+                    this.isValidCustomerName(name)
+                );
+                
+                // Only show errors if there are valid customers with issues
+                if (validMissingCustomers.length > 0 || validUnmappedCustomers.length > 0) {
+                    this.showError({
+                        missing_customers: validMissingCustomers,
+                        unmapped_customers: validUnmappedCustomers
+                    });
+                    
+                    // Show customer pricing setup for first valid missing customer
+                    if (validMissingCustomers.length > 0) {
+                        this.showCustomerPricingSetup(validMissingCustomers[0]);
+                    }
                 }
             }
 
@@ -523,9 +538,57 @@ class BillingApp {
     
     // Show customer pricing setup modal
     showCustomerPricingSetup(customerName) {
+        // Validate customer name before showing modal
+        if (!this.isValidCustomerName(customerName)) {
+            console.log('Invalid customer name detected, skipping modal:', customerName);
+            return;
+        }
+        
         this.currentCustomerForPricing = customerName;
         document.getElementById('customer-name').textContent = customerName;
         this.pricingModal.classList.remove('hidden');
+    }
+    
+    // Validate if a string is a valid customer name
+    isValidCustomerName(name) {
+        if (!name || typeof name !== 'string') {
+            return false;
+        }
+        
+        const trimmedName = name.trim();
+        
+        // Must be at least 4 characters
+        if (trimmedName.length < 4) {
+            return false;
+        }
+        
+        // Must contain letters
+        if (!trimmedName.match(/[a-zA-Z]/)) {
+            return false;
+        }
+        
+        // Must not be just a number
+        if (trimmedName.match(/^\d+$/)) {
+            return false;
+        }
+        
+        // Must not be a 4-digit year
+        if (trimmedName.match(/^\d{4}$/)) {
+            return false;
+        }
+        
+        // Must not be common non-customer terms
+        const invalidTerms = [
+            'total', 'sum', 'date', 'month', 'year', 'customer', 'name', 
+            'ltl', 'package', 'shipment', 'report', 'data', 'undefined', 
+            'null', 'error', 'loading', 'n/a', 'na', 'none'
+        ];
+        
+        if (invalidTerms.includes(trimmedName.toLowerCase())) {
+            return false;
+        }
+        
+        return true;
     }
     
     // Save customer pricing data
