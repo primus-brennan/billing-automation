@@ -1,0 +1,160 @@
+{
+  "customers": {
+    "abc-company": {
+      "name": "ABC Company",
+      "qb_customer_id": "123",
+      "payment_method": "invoice",
+      "ltl_pricing": {
+        "minimum": 350,
+        "tiers": [
+          {"up_to": 499, "rate": 1.50},
+          {"up_to": 999, "rate": 1.25},
+          {"up_to": null, "rate": 1.00}
+        ]
+      },
+      "small_package_pricing": {
+        "minimum": 0,
+        "tiers": [
+          {"up_to": 1000, "rate": 0.50},
+          {"up_to": null, "rate": 0.40}
+        ]
+      },
+      "storage_fee": 50,
+      "contract_minimum": 500,
+      "other_pricing": {
+        "Webhosting": 75,
+        "API Integration": 100
+      }
+    },
+    "xyz-corp": {
+      "name": "XYZ Corp", 
+      "qb_customer_id": "456",
+      "payment_method": "credit_card",
+      "ltl_pricing": {
+        "minimum": 500,
+        "tiers": [
+          {"up_to": 299, "rate": 2.00},
+          {"up_to": 799, "rate": 1.75},
+          {"up_to": null, "rate": 1.50}
+        ]
+      },
+      "small_package_pricing": {
+        "minimum": 25,
+        "tiers": [
+          {"up_to": 500, "rate": 0.75},
+          {"up_to": null, "rate": 0.60}
+        ]
+      },
+      "storage_fee": 100,
+      "contract_minimum": 750,
+      "other_pricing": {
+        "Custom Integration": 200,
+        "Premium Support": 150
+      }
+    },
+    "global-logistics": {
+      "name": "Global Logistics Inc",
+      "qb_customer_id": null,
+      "payment_method": "invoice",
+      "ltl_pricing": {
+        "minimum": 300,
+        "tiers": [
+          {"up_to": 199, "rate": 1.80},
+          {"up_to": 499, "rate": 1.60},
+          {"up_to": null, "rate": 1.40}
+        ]
+      },
+      "small_package_pricing": {
+        "minimum": 15,
+        "tiers": [
+          {"up_to": 750, "rate": 0.65},
+          {"up_to": null, "rate": 0.55}
+        ]
+      },
+      "storage_fee": 75,
+      "contract_minimum": 400,
+      "other_pricing": {
+        "Expedited Processing": 125,
+        "Weekend Service": 200
+      }
+    },
+    "freight-masters": {
+      "name": "Freight Masters LLC",
+      "qb_customer_id": null,
+      "payment_method": "invoice",
+      "ltl_pricing": {
+        "minimum": 400,
+        "tiers": [
+          {"up_to": 399, "rate": 1.65},
+          {"up_to": 899, "rate": 1.45},
+          {"up_to": null, "rate": 1.25}
+        ]
+      },
+      "small_package_pricing": {
+        "minimum": 30,
+        "tiers": [
+          {"up_to": 600, "rate": 0.70},
+          {"up_to": null, "rate": 0.50}
+        ]
+      },
+      "storage_fee": 90,
+      "contract_minimum": 600,
+      "other_pricing": {
+        "Insurance Processing": 50,
+        "Documentation Fee": 25
+      }
+    },
+    "swift-transport": {
+      "name": "Swift Transport Co",
+      "qb_customer_id": "789",
+      "payment_method": "credit_card",
+      "ltl_pricing": {
+        "minimum": 275,
+        "tiers": [
+          {"up_to": 299, "rate": 1.70},
+          {"up_to": 699, "rate": 1.50},
+          {"up_to": null, "rate": 1.30}
+        ]
+      },
+      "small_package_pricing": {
+        "minimum": 20,
+        "tiers": [
+          {"up_to": 800, "rate": 0.60},
+          {"up_to": null, "rate": 0.45}
+        ]
+      },
+      "storage_fee": 60,
+      "contract_minimum": 350,
+      "other_pricing": {
+        "Rush Delivery": 100,
+        "Special Handling": 75
+      }
+    },
+    "metro-shipping": {
+      "name": "Metro Shipping Solutions",
+      "qb_customer_id": null,
+      "payment_method": "invoice",
+      "ltl_pricing": {
+        "minimum": 325,
+        "tiers": [
+          {"up_to": 249, "rate": 1.85},
+          {"up_to": 599, "rate": 1.65},
+          {"up_to": null, "rate": 1.45}
+        ]
+      },
+      "small_package_pricing": {
+        "minimum": 10,
+        "tiers": [
+          {"up_to": 400, "rate": 0.80},
+          {"up_to": null, "rate": 0.65}
+        ]
+      },
+      "storage_fee": 40,
+      "contract_minimum": 300,
+      "other_pricing": {
+        "Tracking Service": 30,
+        "Damage Protection": 50
+      }
+    }
+  }
+}

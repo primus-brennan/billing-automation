@@ -1,0 +1,22 @@
+{
+  "report_name_to_customer_id": {
+    "AB Trucking": "abc-company",
+    "ABC Company": "abc-company",
+    "ABC Co": "abc-company",
+    "ACF Global Logistics": "xyz-corp",
+    "XYZ Corp": "xyz-corp",
+    "XYZ Corporation": "xyz-corp",
+    "Global Logistics Inc": "global-logistics",
+    "Global Logistics": "global-logistics",
+    "Global Logistics Incorporated": "global-logistics",
+    "Freight Masters LLC": "freight-masters",
+    "Freight Masters": "freight-masters",
+    "FreightMasters": "freight-masters",
+    "Swift Transport Co": "swift-transport",
+    "Swift Transport": "swift-transport",
+    "Swift Transport Company": "swift-transport",
+    "Metro Shipping Solutions": "metro-shipping",
+    "Metro Shipping": "metro-shipping",
+    "Metro Solutions": "metro-shipping"
+  }
+}

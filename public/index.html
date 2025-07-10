@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing Automation System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Billing Automation System</h1>
+            <p>Automated billing with QuickBooks Online integration</p>
+        </header>
+        
+        <main>
+            <div class="actions">
+                <button id="fetch-data-btn" class="btn primary">
+                    🔄 Fetch Latest Data
+                </button>
+                <button id="refresh-qb-btn" class="btn secondary">
+                    �� Refresh QB Customers
+                </button>
+            </div>
+            
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Processing billing data...</p>
+            </div>
+            
+            <div id="error-section" class="error-section hidden">
+                <h3>⚠️ Issues Found</h3>
+                <div id="missing-customers" class="error-list"></div>
+                <div id="unmapped-customers" class="error-list"></div>
+            </div>
+            
+            <div id="billing-summary" class="billing-summary hidden">
+                <h2>💰 Billing Summary</h2>
+                <div id="summary-stats" class="stats-grid"></div>
+                <div id="customer-list" class="customer-list"></div>
+            </div>
+            
+            <div id="invoice-actions" class="invoice-actions hidden">
+                <button id="approve-all-btn" class="btn success">
+                    ✅ Approve All Invoices
+                </button>
+                <button id="create-qb-btn" class="btn primary">
+                    📋 Create QB Draft Invoices
+                </button>
+            </div>
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
