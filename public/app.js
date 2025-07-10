@@ -5,6 +5,16 @@ class BillingApp {
     }
 
     init() {
+        // Check if this is an OAuth callback first
+        const urlParams = new URLSearchParams(window.location.search);
+        const isOAuthCallback = urlParams.has('code') && urlParams.has('realmId');
+        
+        if (isOAuthCallback) {
+            console.log('OAuth callback detected, processing...');
+            this.handleOAuthCallback();
+            return; // Don't initialize other UI elements during OAuth processing
+        }
+        
         this.bindEvents();
         this.loadingElement = document.getElementById('loading');
         this.errorSection = document.getElementById('error-section');
@@ -12,9 +22,6 @@ class BillingApp {
         this.invoiceActions = document.getElementById('invoice-actions');
         this.currentData = null;
         this.qbTokens = this.loadQBTokens();
-        
-        // Check if this is an OAuth callback
-        this.handleOAuthCallback();
         
         // Update UI based on QB connection status
         this.updateQBConnectionStatus();
@@ -76,11 +83,23 @@ class BillingApp {
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         const state = urlParams.get('state');
+        const realmId = urlParams.get('realmId');
+        
+        console.log('OAuth Callback - Code:', code);
+        console.log('OAuth Callback - State:', state);
+        console.log('OAuth Callback - RealmId:', realmId);
         
         if (code) {
+            // Show loading message
+            document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+                    <p style="font-size: 18px; color: #333;">Connecting to QuickBooks...</p>
+                    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+                </div>
+            `;
+            
             try {
-                this.showLoading('Connecting to QuickBooks...');
-                
                 const response = await fetch('/.netlify/functions/fetch-report', {
                     method: 'POST',
                     headers: {
@@ -89,26 +108,56 @@ class BillingApp {
                     body: JSON.stringify({ 
                         action: 'qb_exchange_token',
                         code: code,
-                        state: state
+                        state: state,
+                        realmId: realmId
                     })
                 });
 
+                console.log('Token Exchange Response Status:', response.status);
                 const tokens = await response.json();
+                console.log('Token Exchange Response:', tokens);
                 
                 if (response.ok) {
-                    this.saveQBTokens(tokens);
-                    this.hideLoading();
-                    this.showNotification('Successfully connected to QuickBooks!', 'success');
+                    // Add realmId to tokens
+                    tokens.realmId = realmId;
                     
-                    // Clear URL parameters
-                    window.history.replaceState({}, document.title, window.location.pathname);
+                    // Save tokens
+                    localStorage.setItem('qb_tokens', JSON.stringify(tokens));
+                    
+                    // Show success and redirect
+                    document.body.innerHTML = `
+                        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                            <div style="background: #4CAF50; color: white; padding: 20px; border-radius: 10px; text-align: center; max-width: 400px;">
+                                <h2 style="margin: 0 0 10px 0;">✅ Success!</h2>
+                                <p style="margin: 0;">Successfully connected to QuickBooks!</p>
+                                <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Redirecting back to your billing system...</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Redirect back to main app after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = window.location.pathname;
+                    }, 2000);
+                    
                 } else {
                     throw new Error(tokens.error || 'Failed to connect to QuickBooks');
                 }
             } catch (error) {
-                this.hideLoading();
-                this.showError({ general: [error.message] });
                 console.error('OAuth callback error:', error);
+                
+                // Show error message
+                document.body.innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        <div style="background: #f44336; color: white; padding: 20px; border-radius: 10px; text-align: center; max-width: 400px;">
+                            <h2 style="margin: 0 0 10px 0;">❌ Connection Failed</h2>
+                            <p style="margin: 0 0 15px 0;">${error.message}</p>
+                            <button onclick="window.location.href='${window.location.pathname}'" style="background: white; color: #f44336; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                                Return to Billing System
+                            </button>
+                        </div>
+                    </div>
+                `;
             }
         }
     }

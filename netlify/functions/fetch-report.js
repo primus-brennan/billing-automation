@@ -7,7 +7,7 @@ const path = require('path');
 const QB_CONFIG = {
   clientId: process.env.QBCLIENT_ID,
   clientSecret: process.env.QBCLIENT_SECRET,
-  redirectUri: process.env.QB_REDIRECT_URI || 'https://primusqb.netlify.app/auth/callback',
+  redirectUri: process.env.QB_REDIRECT_URI || 'https://primusqb.netlify.app/',
   baseUrl: process.env.QB_SANDBOX === 'true' ? 'https://sandbox-quickbooks.api.intuit.com' : 'https://quickbooks.api.intuit.com',
   discoveryUrl: process.env.QB_SANDBOX === 'true' ? 'https://appcenter.intuit.com/connect/oauth2' : 'https://appcenter.intuit.com/connect/oauth2'
 };
@@ -63,7 +63,12 @@ const generateQBAuthUrl = () => {
 
 // Exchange authorization code for tokens
 const exchangeCodeForTokens = async (code, state) => {
+  console.log('Exchange tokens - Code:', code);
+  console.log('Exchange tokens - State:', state);
+  console.log('Exchange tokens - Client ID configured:', !!QB_CONFIG.clientId);
+  
   if (!QB_CONFIG.clientId || !QB_CONFIG.clientSecret) {
+    console.error('QB credentials missing - Client ID:', !!QB_CONFIG.clientId, 'Client Secret:', !!QB_CONFIG.clientSecret);
     throw new Error('QuickBooks credentials not configured');
   }
 
@@ -77,6 +82,10 @@ const exchangeCodeForTokens = async (code, state) => {
 
   const auth = Buffer.from(`${QB_CONFIG.clientId}:${QB_CONFIG.clientSecret}`).toString('base64');
   
+  console.log('Token request - URL:', tokenUrl);
+  console.log('Token request - Redirect URI:', QB_CONFIG.redirectUri);
+  console.log('Token request - Params:', params.toString());
+  
   try {
     const response = await axios.post(tokenUrl, params, {
       headers: {
@@ -85,10 +94,15 @@ const exchangeCodeForTokens = async (code, state) => {
       }
     });
     
+    console.log('Token response - Status:', response.status);
+    console.log('Token response - Data:', response.data);
+    
     return response.data;
   } catch (error) {
-    console.error('Token exchange error:', error.response?.data || error.message);
-    throw new Error('Failed to exchange code for tokens');
+    console.error('Token exchange error - Status:', error.response?.status);
+    console.error('Token exchange error - Data:', error.response?.data);
+    console.error('Token exchange error - Message:', error.message);
+    throw new Error(`Failed to exchange code for tokens: ${error.response?.data?.error_description || error.message}`);
   }
 };
 
@@ -430,15 +444,28 @@ exports.handler = async (event, context) => {
         };
       
       case 'qb_exchange_token':
-        const { code, state } = body;
+        console.log('Processing qb_exchange_token request');
+        const { code, state, realmId } = body;
+        console.log('Request body - Code:', !!code, 'State:', !!state, 'RealmId:', realmId);
+        
         if (!code) {
           throw new Error('Authorization code required');
         }
+        
         const tokens = await exchangeCodeForTokens(code, state);
+        
+        // Add realmId to the response
+        const response = {
+          ...tokens,
+          realmId: realmId
+        };
+        
+        console.log('Returning tokens with realmId:', !!response.access_token, 'RealmId:', response.realmId);
+        
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify(tokens)
+          body: JSON.stringify(response)
         };
       
       case 'refresh_qb_customers':
