@@ -3,6 +3,15 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const path = require('path');
 
+// QuickBooks OAuth configuration
+const QB_CONFIG = {
+  clientId: process.env.QBCLIENT_ID,
+  clientSecret: process.env.QBCLIENT_SECRET,
+  redirectUri: process.env.QB_REDIRECT_URI || 'https://primusqb.netlify.app/auth/callback',
+  baseUrl: process.env.QB_SANDBOX === 'true' ? 'https://sandbox-quickbooks.api.intuit.com' : 'https://quickbooks.api.intuit.com',
+  discoveryUrl: process.env.QB_SANDBOX === 'true' ? 'https://appcenter.intuit.com/connect/oauth2' : 'https://appcenter.intuit.com/connect/oauth2'
+};
+
 // Load customer data and mapping
 const loadCustomerData = () => {
   const customersPath = path.join(__dirname, '../../data/customers.json');
@@ -34,6 +43,122 @@ const calculateTieredPricing = (count, pricing) => {
   }
   
   return Math.max(total, pricing.minimum || 0);
+};
+
+// Generate QuickBooks OAuth URL
+const generateQBAuthUrl = () => {
+  const state = Math.random().toString(36).substring(2, 15);
+  const scope = 'com.intuit.quickbooks.accounting';
+  
+  const authUrl = `${QB_CONFIG.discoveryUrl}?` +
+    `client_id=${QB_CONFIG.clientId}&` +
+    `scope=${scope}&` +
+    `redirect_uri=${encodeURIComponent(QB_CONFIG.redirectUri)}&` +
+    `response_type=code&` +
+    `access_type=offline&` +
+    `state=${state}`;
+  
+  return { authUrl, state };
+};
+
+// Exchange authorization code for tokens
+const exchangeCodeForTokens = async (code, state) => {
+  if (!QB_CONFIG.clientId || !QB_CONFIG.clientSecret) {
+    throw new Error('QuickBooks credentials not configured');
+  }
+
+  const tokenUrl = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
+  
+  const params = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code: code,
+    redirect_uri: QB_CONFIG.redirectUri
+  });
+
+  const auth = Buffer.from(`${QB_CONFIG.clientId}:${QB_CONFIG.clientSecret}`).toString('base64');
+  
+  try {
+    const response = await axios.post(tokenUrl, params, {
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Token exchange error:', error.response?.data || error.message);
+    throw new Error('Failed to exchange code for tokens');
+  }
+};
+
+// Get QuickBooks customers
+const getQBCustomers = async (accessToken, companyId) => {
+  if (!accessToken || !companyId) {
+    throw new Error('Missing QuickBooks access token or company ID');
+  }
+
+  const url = `${QB_CONFIG.baseUrl}/v3/company/${companyId}/customers`;
+  
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    return response.data.QueryResponse?.Customer || [];
+  } catch (error) {
+    console.error('QB API error:', error.response?.data || error.message);
+    throw new Error('Failed to fetch QuickBooks customers');
+  }
+};
+
+// Create QB invoice
+const createQBInvoice = async (accessToken, companyId, invoiceData) => {
+  if (!accessToken || !companyId) {
+    throw new Error('Missing QuickBooks access token or company ID');
+  }
+
+  const url = `${QB_CONFIG.baseUrl}/v3/company/${companyId}/invoice`;
+  
+  const invoice = {
+    Line: invoiceData.lineItems.map((item, index) => ({
+      Id: index + 1,
+      LineNum: index + 1,
+      Amount: item.amount,
+      DetailType: "SalesItemLineDetail",
+      SalesItemLineDetail: {
+        ItemRef: {
+          value: "1", // Default item - you may want to create specific items
+          name: item.description
+        },
+        Qty: item.quantity || 1,
+        UnitPrice: item.unitPrice || item.amount
+      }
+    })),
+    CustomerRef: {
+      value: invoiceData.customerId
+    },
+    TotalAmt: invoiceData.totalAmount,
+    DueDate: invoiceData.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  };
+
+  try {
+    const response = await axios.post(url, invoice, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response.data.Invoice;
+  } catch (error) {
+    console.error('QB Invoice creation error:', error.response?.data || error.message);
+    throw new Error('Failed to create QuickBooks invoice');
+  }
 };
 
 // Mock function to simulate fetching billing data from external source
@@ -155,38 +280,95 @@ const processBillingData = async () => {
   };
 };
 
-// Mock QuickBooks functions
-const refreshQuickBooksCustomers = async () => {
-  // In a real implementation, this would connect to QuickBooks API
-  // and update customer IDs in the customers.json file
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  return {
-    success: true,
-    customers_updated: 2,
-    message: "Successfully refreshed QuickBooks customers"
-  };
+// Real QuickBooks functions
+const refreshQuickBooksCustomers = async (accessToken, companyId) => {
+  if (!accessToken || !companyId) {
+    return {
+      success: false,
+      error: 'QuickBooks not connected. Please authenticate first.',
+      needs_auth: true
+    };
+  }
+
+  try {
+    const qbCustomers = await getQBCustomers(accessToken, companyId);
+    
+    // Here you would update your customer data with QB customer IDs
+    // For now, we'll just return the count
+    
+    return {
+      success: true,
+      customers_found: qbCustomers.length,
+      message: `Found ${qbCustomers.length} customers in QuickBooks`
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      needs_auth: error.message.includes('access token')
+    };
+  }
 };
 
-const createQuickBooksInvoices = async (billingData) => {
-  // In a real implementation, this would create draft invoices in QuickBooks
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  const eligibleCustomers = billingData.customers.filter(c => c.qb_customer_id);
-  
-  return {
-    success: true,
-    invoices_created: eligibleCustomers.length,
-    message: `Created ${eligibleCustomers.length} draft invoices in QuickBooks`
-  };
+const createQuickBooksInvoices = async (billingData, accessToken, companyId) => {
+  if (!accessToken || !companyId) {
+    return {
+      success: false,
+      error: 'QuickBooks not connected. Please authenticate first.',
+      needs_auth: true
+    };
+  }
+
+  try {
+    const eligibleCustomers = billingData.customers.filter(c => c.qb_customer_id);
+    let createdCount = 0;
+    
+    for (const customer of eligibleCustomers) {
+      const invoiceData = {
+        customerId: customer.qb_customer_id,
+        totalAmount: customer.total,
+        lineItems: [
+          {
+            description: `LTL Shipments (${customer.ltl_count})`,
+            amount: customer.ltl_total,
+            quantity: customer.ltl_count,
+            unitPrice: customer.ltl_count > 0 ? customer.ltl_total / customer.ltl_count : 0
+          },
+          {
+            description: `Small Package Shipments (${customer.small_package_count})`,
+            amount: customer.small_package_total,
+            quantity: customer.small_package_count,
+            unitPrice: customer.small_package_count > 0 ? customer.small_package_total / customer.small_package_count : 0
+          },
+          {
+            description: 'Storage Fee',
+            amount: customer.storage_fee,
+            quantity: 1,
+            unitPrice: customer.storage_fee
+          }
+        ].filter(item => item.amount > 0)
+      };
+      
+      await createQBInvoice(accessToken, companyId, invoiceData);
+      createdCount++;
+    }
+    
+    return {
+      success: true,
+      invoices_created: createdCount,
+      message: `Created ${createdCount} invoices in QuickBooks`
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      needs_auth: error.message.includes('access token')
+    };
+  }
 };
 
 const approveInvoices = async (billingData) => {
-  // In a real implementation, this would approve invoices in the system
+  // In a real implementation, this would mark invoices as approved in your system
   
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 1000));
@@ -223,6 +405,10 @@ exports.handler = async (event, context) => {
     
     console.log(`Processing action: ${action}`);
     
+    // Get QB credentials from headers if available
+    const accessToken = event.headers['qb-access-token'];
+    const companyId = event.headers['qb-company-id'];
+    
     switch (action) {
       case 'fetch_billing_data':
         const billingData = await processBillingData();
@@ -232,8 +418,31 @@ exports.handler = async (event, context) => {
           body: JSON.stringify(billingData)
         };
       
+      case 'qb_auth_url':
+        if (!QB_CONFIG.clientId) {
+          throw new Error('QuickBooks Client ID not configured');
+        }
+        const authData = generateQBAuthUrl();
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(authData)
+        };
+      
+      case 'qb_exchange_token':
+        const { code, state } = body;
+        if (!code) {
+          throw new Error('Authorization code required');
+        }
+        const tokens = await exchangeCodeForTokens(code, state);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(tokens)
+        };
+      
       case 'refresh_qb_customers':
-        const qbResult = await refreshQuickBooksCustomers();
+        const qbResult = await refreshQuickBooksCustomers(accessToken, companyId);
         return {
           statusCode: 200,
           headers,
@@ -244,7 +453,7 @@ exports.handler = async (event, context) => {
         if (!body.data) {
           throw new Error('No billing data provided for invoice creation');
         }
-        const invoiceResult = await createQuickBooksInvoices(body.data);
+        const invoiceResult = await createQuickBooksInvoices(body.data, accessToken, companyId);
         return {
           statusCode: 200,
           headers,
@@ -269,8 +478,11 @@ exports.handler = async (event, context) => {
           body: JSON.stringify({
             success: true,
             message: 'Billing function ready',
+            qb_configured: !!QB_CONFIG.clientId,
             available_actions: [
               'fetch_billing_data',
+              'qb_auth_url',
+              'qb_exchange_token',
               'refresh_qb_customers',
               'create_qb_invoices',
               'approve_invoices'

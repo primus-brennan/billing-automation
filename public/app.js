@@ -11,6 +11,13 @@ class BillingApp {
         this.billingSection = document.getElementById('billing-summary');
         this.invoiceActions = document.getElementById('invoice-actions');
         this.currentData = null;
+        this.qbTokens = this.loadQBTokens();
+        
+        // Check if this is an OAuth callback
+        this.handleOAuthCallback();
+        
+        // Update UI based on QB connection status
+        this.updateQBConnectionStatus();
     }
 
     bindEvents() {
@@ -29,6 +36,141 @@ class BillingApp {
         document.getElementById('create-qb-btn').addEventListener('click', () => {
             this.createQBInvoices();
         });
+    }
+
+    // QuickBooks Token Management
+    loadQBTokens() {
+        const tokens = localStorage.getItem('qb_tokens');
+        return tokens ? JSON.parse(tokens) : null;
+    }
+
+    saveQBTokens(tokens) {
+        this.qbTokens = tokens;
+        localStorage.setItem('qb_tokens', JSON.stringify(tokens));
+        this.updateQBConnectionStatus();
+    }
+
+    clearQBTokens() {
+        this.qbTokens = null;
+        localStorage.removeItem('qb_tokens');
+        this.updateQBConnectionStatus();
+    }
+
+    updateQBConnectionStatus() {
+        const refreshBtn = document.getElementById('refresh-qb-btn');
+        const createBtn = document.getElementById('create-qb-btn');
+        
+        if (this.qbTokens) {
+            refreshBtn.innerHTML = '🔄 Refresh QB Customers';
+            refreshBtn.classList.remove('needs-auth');
+            createBtn.classList.remove('needs-auth');
+        } else {
+            refreshBtn.innerHTML = '🔗 Connect QuickBooks';
+            refreshBtn.classList.add('needs-auth');
+            createBtn.classList.add('needs-auth');
+        }
+    }
+
+    // OAuth Flow
+    async handleOAuthCallback() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        
+        if (code) {
+            try {
+                this.showLoading('Connecting to QuickBooks...');
+                
+                const response = await fetch('/.netlify/functions/fetch-report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        action: 'qb_exchange_token',
+                        code: code,
+                        state: state
+                    })
+                });
+
+                const tokens = await response.json();
+                
+                if (response.ok) {
+                    this.saveQBTokens(tokens);
+                    this.hideLoading();
+                    this.showNotification('Successfully connected to QuickBooks!', 'success');
+                    
+                    // Clear URL parameters
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } else {
+                    throw new Error(tokens.error || 'Failed to connect to QuickBooks');
+                }
+            } catch (error) {
+                this.hideLoading();
+                this.showError({ general: [error.message] });
+                console.error('OAuth callback error:', error);
+            }
+        }
+    }
+
+    async connectQuickBooks() {
+        try {
+            const response = await fetch('/.netlify/functions/fetch-report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ action: 'qb_auth_url' })
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Store state for verification
+                sessionStorage.setItem('qb_oauth_state', data.state);
+                
+                // Redirect to QuickBooks OAuth
+                window.location.href = data.authUrl;
+            } else {
+                throw new Error(data.error || 'Failed to get QuickBooks authorization URL');
+            }
+        } catch (error) {
+            this.showError({ general: [error.message] });
+            console.error('QB Connect error:', error);
+        }
+    }
+
+    // API Helper with QB tokens
+    async makeAPIRequest(action, data = null) {
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+
+        // Add QB tokens if available
+        if (this.qbTokens) {
+            headers['qb-access-token'] = this.qbTokens.access_token;
+            headers['qb-company-id'] = this.qbTokens.realmId;
+        }
+
+        const response = await fetch('/.netlify/functions/fetch-report', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ action, data })
+        });
+
+        const result = await response.json();
+        
+        // Handle auth errors
+        if (result.needs_auth) {
+            this.clearQBTokens();
+            throw new Error(result.error + ' Please reconnect to QuickBooks.');
+        }
+
+        if (!response.ok) {
+            throw new Error(result.error || 'API request failed');
+        }
+
+        return result;
     }
 
     showLoading(message = 'Processing billing data...') {
@@ -64,6 +206,14 @@ class BillingApp {
             `;
         } else {
             unmappedCustomers.innerHTML = '';
+        }
+
+        // Handle general errors
+        if (errors.general && errors.general.length > 0) {
+            missingCustomers.innerHTML = `
+                <h4>Error:</h4>
+                <ul>${errors.general.map(e => `<li>${e}</li>`).join('')}</ul>
+            `;
         }
     }
 
@@ -134,20 +284,8 @@ class BillingApp {
         try {
             this.showLoading('Fetching billing data...');
             
-            const response = await fetch('/.netlify/functions/fetch-report', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ action: 'fetch_billing_data' })
-            });
-
-            const data = await response.json();
+            const data = await this.makeAPIRequest('fetch_billing_data');
             
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to fetch billing data');
-            }
-
             this.hideLoading();
 
             if (data.errors && (data.errors.missing_customers.length > 0 || data.errors.unmapped_customers.length > 0)) {
@@ -166,31 +304,28 @@ class BillingApp {
     }
 
     async refreshQBCustomers() {
+        // If not connected, initiate connection
+        if (!this.qbTokens) {
+            await this.connectQuickBooks();
+            return;
+        }
+
         try {
             this.showLoading('Refreshing QuickBooks customers...');
             
-            const response = await fetch('/.netlify/functions/fetch-report', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ action: 'refresh_qb_customers' })
-            });
-
-            const data = await response.json();
+            const data = await this.makeAPIRequest('refresh_qb_customers');
             
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to refresh QuickBooks customers');
-            }
-
             this.hideLoading();
             
-            // Show success message
-            this.showNotification('QuickBooks customers refreshed successfully!', 'success');
-            
-            // Refresh billing data to update QB status
-            if (this.currentData) {
-                this.fetchBillingData();
+            if (data.success) {
+                this.showNotification(data.message, 'success');
+                
+                // Refresh billing data to update QB status
+                if (this.currentData) {
+                    this.fetchBillingData();
+                }
+            } else {
+                throw new Error(data.error);
             }
 
         } catch (error) {
@@ -209,25 +344,15 @@ class BillingApp {
         try {
             this.showLoading('Approving all invoices...');
             
-            const response = await fetch('/.netlify/functions/fetch-report', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    action: 'approve_invoices',
-                    data: this.currentData 
-                })
-            });
-
-            const data = await response.json();
+            const data = await this.makeAPIRequest('approve_invoices', this.currentData);
             
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to approve invoices');
-            }
-
             this.hideLoading();
-            this.showNotification('All invoices approved successfully!', 'success');
+            
+            if (data.success) {
+                this.showNotification(data.message, 'success');
+            } else {
+                throw new Error(data.error);
+            }
 
         } catch (error) {
             this.hideLoading();
@@ -242,28 +367,23 @@ class BillingApp {
             return;
         }
 
+        if (!this.qbTokens) {
+            this.showError({ general: ['Please connect to QuickBooks first'] });
+            return;
+        }
+
         try {
-            this.showLoading('Creating QuickBooks draft invoices...');
+            this.showLoading('Creating QuickBooks invoices...');
             
-            const response = await fetch('/.netlify/functions/fetch-report', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    action: 'create_qb_invoices',
-                    data: this.currentData 
-                })
-            });
-
-            const data = await response.json();
+            const data = await this.makeAPIRequest('create_qb_invoices', this.currentData);
             
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to create QuickBooks invoices');
-            }
-
             this.hideLoading();
-            this.showNotification(`Created ${data.invoices_created} draft invoices in QuickBooks!`, 'success');
+            
+            if (data.success) {
+                this.showNotification(data.message, 'success');
+            } else {
+                throw new Error(data.error);
+            }
 
         } catch (error) {
             this.hideLoading();
@@ -281,10 +401,10 @@ class BillingApp {
         // Add to page
         document.body.appendChild(notification);
         
-        // Remove after 3 seconds
+        // Remove after 5 seconds
         setTimeout(() => {
             notification.remove();
-        }, 3000);
+        }, 5000);
     }
 }
 
