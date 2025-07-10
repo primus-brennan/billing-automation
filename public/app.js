@@ -199,6 +199,16 @@ class BillingApp {
         if (this.qbTokens) {
             headers['qb-access-token'] = this.qbTokens.access_token;
             headers['qb-company-id'] = this.qbTokens.realmId;
+            
+            console.log('Making API request with QB tokens:', {
+                action: action,
+                hasAccessToken: !!this.qbTokens.access_token,
+                accessTokenPreview: this.qbTokens.access_token ? this.qbTokens.access_token.substring(0, 20) + '...' : null,
+                companyId: this.qbTokens.realmId,
+                headers: Object.keys(headers)
+            });
+        } else {
+            console.log('Making API request without QB tokens for action:', action);
         }
 
         const response = await fetch('/.netlify/functions/fetch-report', {
@@ -209,8 +219,15 @@ class BillingApp {
 
         const result = await response.json();
         
+        console.log('API Response:', {
+            status: response.status,
+            ok: response.ok,
+            result: result
+        });
+        
         // Handle auth errors
         if (result.needs_auth) {
+            console.log('Auth required, clearing tokens');
             this.clearQBTokens();
             throw new Error(result.error + ' Please reconnect to QuickBooks.');
         }

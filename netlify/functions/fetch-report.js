@@ -108,24 +108,55 @@ const exchangeCodeForTokens = async (code, state) => {
 
 // Get QuickBooks customers
 const getQBCustomers = async (accessToken, companyId) => {
+  console.log('getQBCustomers called with:', {
+    hasAccessToken: !!accessToken,
+    companyId: companyId,
+    baseUrl: QB_CONFIG.baseUrl
+  });
+  
   if (!accessToken || !companyId) {
-    throw new Error('Missing QuickBooks access token or company ID');
+    const error = `Missing QuickBooks credentials - Access Token: ${!!accessToken}, Company ID: ${!!companyId}`;
+    console.error(error);
+    throw new Error(error);
   }
 
   const url = `${QB_CONFIG.baseUrl}/v3/company/${companyId}/customers`;
+  console.log('QB API Request URL:', url);
   
   try {
     const response = await axios.get(url, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Accept': 'application/json'
-      }
+      },
+      timeout: 10000 // 10 second timeout
     });
+    
+    console.log('QB API Response Status:', response.status);
+    console.log('QB API Response Headers:', response.headers);
+    console.log('QB API Response Data:', JSON.stringify(response.data, null, 2));
     
     return response.data.QueryResponse?.Customer || [];
   } catch (error) {
-    console.error('QB API error:', error.response?.data || error.message);
-    throw new Error('Failed to fetch QuickBooks customers');
+    console.error('QB API error details:');
+    console.error('- Status:', error.response?.status);
+    console.error('- Status Text:', error.response?.statusText);
+    console.error('- Headers:', error.response?.headers);
+    console.error('- Data:', error.response?.data);
+    console.error('- Message:', error.message);
+    console.error('- Code:', error.code);
+    
+    if (error.response?.status === 401) {
+      throw new Error('QuickBooks access token expired. Please reconnect to QuickBooks.');
+    } else if (error.response?.status === 403) {
+      throw new Error('Access denied to QuickBooks company data. Please check permissions.');
+    } else if (error.response?.status === 400) {
+      throw new Error(`Invalid request to QuickBooks: ${error.response?.data?.Fault?.[0]?.Error?.[0]?.Detail || error.response?.statusText}`);
+    } else if (error.code === 'ECONNABORTED' || error.code === 'TIMEOUT') {
+      throw new Error('QuickBooks API request timed out. Please try again.');
+    } else {
+      throw new Error(`QuickBooks API error: ${error.response?.data?.Fault?.[0]?.Error?.[0]?.Detail || error.message}`);
+    }
   }
 };
 
@@ -296,16 +327,27 @@ const processBillingData = async () => {
 
 // Real QuickBooks functions
 const refreshQuickBooksCustomers = async (accessToken, companyId) => {
+  console.log('refreshQuickBooksCustomers called with:', {
+    hasAccessToken: !!accessToken,
+    accessTokenLength: accessToken ? accessToken.length : 0,
+    companyId: companyId
+  });
+
   if (!accessToken || !companyId) {
+    const error = 'QuickBooks not connected. Please authenticate first.';
+    console.log('Missing QB credentials:', { hasAccessToken: !!accessToken, companyId });
     return {
       success: false,
-      error: 'QuickBooks not connected. Please authenticate first.',
+      error: error,
       needs_auth: true
     };
   }
 
   try {
+    console.log('Attempting to fetch QB customers...');
     const qbCustomers = await getQBCustomers(accessToken, companyId);
+    
+    console.log('Successfully fetched QB customers:', qbCustomers.length);
     
     // Here you would update your customer data with QB customer IDs
     // For now, we'll just return the count
@@ -316,10 +358,11 @@ const refreshQuickBooksCustomers = async (accessToken, companyId) => {
       message: `Found ${qbCustomers.length} customers in QuickBooks`
     };
   } catch (error) {
+    console.error('refreshQuickBooksCustomers error:', error);
     return {
       success: false,
       error: error.message,
-      needs_auth: error.message.includes('access token')
+      needs_auth: error.message.includes('access token') || error.message.includes('expired')
     };
   }
 };
@@ -422,6 +465,20 @@ exports.handler = async (event, context) => {
     // Get QB credentials from headers if available
     const accessToken = event.headers['qb-access-token'];
     const companyId = event.headers['qb-company-id'];
+    
+    console.log('Request headers received:', {
+      hasQBAccessToken: !!accessToken,
+      hasQBCompanyId: !!companyId,
+      action: action,
+      allHeaders: Object.keys(event.headers)
+    });
+    
+    if (accessToken) {
+      console.log('Access token preview:', accessToken.substring(0, 20) + '...');
+    }
+    if (companyId) {
+      console.log('Company ID:', companyId);
+    }
     
     switch (action) {
       case 'fetch_billing_data':
