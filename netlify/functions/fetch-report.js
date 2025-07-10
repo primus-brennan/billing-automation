@@ -8,8 +8,8 @@ const QB_CONFIG = {
   clientId: process.env.QBCLIENT_ID,
   clientSecret: process.env.QBCLIENT_SECRET,
   redirectUri: process.env.QB_REDIRECT_URI || 'https://primusqb.netlify.app/',
-  baseUrl: process.env.QB_SANDBOX === 'true' ? 'https://sandbox-quickbooks.api.intuit.com' : 'https://quickbooks.api.intuit.com',
-  discoveryUrl: process.env.QB_SANDBOX === 'true' ? 'https://appcenter.intuit.com/connect/oauth2' : 'https://appcenter.intuit.com/connect/oauth2'
+  baseUrl: process.env.QB_SANDBOX === 'false' ? 'https://quickbooks.api.intuit.com' : 'https://sandbox-quickbooks.api.intuit.com',
+  discoveryUrl: 'https://appcenter.intuit.com/connect/oauth2'
 };
 
 // Load customer data and mapping
@@ -111,7 +111,8 @@ const getQBCustomers = async (accessToken, companyId) => {
   console.log('getQBCustomers called with:', {
     hasAccessToken: !!accessToken,
     companyId: companyId,
-    baseUrl: QB_CONFIG.baseUrl
+    baseUrl: QB_CONFIG.baseUrl,
+    isSandbox: process.env.QB_SANDBOX !== 'false'
   });
   
   if (!accessToken || !companyId) {
@@ -120,7 +121,26 @@ const getQBCustomers = async (accessToken, companyId) => {
     throw new Error(error);
   }
 
-  const url = `${QB_CONFIG.baseUrl}/v3/company/${companyId}/customers`;
+  // First try to get company info to test basic connectivity
+  try {
+    const companyUrl = `${QB_CONFIG.baseUrl}/v3/company/${companyId}/companyinfo/${companyId}`;
+    console.log('Testing QB API connectivity with company info:', companyUrl);
+    
+    const companyResponse = await axios.get(companyUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      },
+      timeout: 10000
+    });
+    
+    console.log('Company info test successful:', companyResponse.status);
+  } catch (testError) {
+    console.log('Company info test failed:', testError.response?.status, testError.response?.data);
+  }
+
+  // Now try to get customers using the correct query syntax
+  const url = `${QB_CONFIG.baseUrl}/v3/company/${companyId}/query?query=SELECT * FROM Customer MAXRESULTS 20`;
   console.log('QB API Request URL:', url);
   
   try {
@@ -142,7 +162,7 @@ const getQBCustomers = async (accessToken, companyId) => {
     console.error('- Status:', error.response?.status);
     console.error('- Status Text:', error.response?.statusText);
     console.error('- Headers:', error.response?.headers);
-    console.error('- Data:', error.response?.data);
+    console.error('- Data:', JSON.stringify(error.response?.data, null, 2));
     console.error('- Message:', error.message);
     console.error('- Code:', error.code);
     
@@ -151,11 +171,15 @@ const getQBCustomers = async (accessToken, companyId) => {
     } else if (error.response?.status === 403) {
       throw new Error('Access denied to QuickBooks company data. Please check permissions.');
     } else if (error.response?.status === 400) {
-      throw new Error(`Invalid request to QuickBooks: ${error.response?.data?.Fault?.[0]?.Error?.[0]?.Detail || error.response?.statusText}`);
+      const qbError = error.response?.data?.Fault?.[0]?.Error?.[0];
+      const errorDetail = qbError?.Detail || qbError?.code || error.response?.statusText;
+      throw new Error(`Invalid request to QuickBooks: ${errorDetail}`);
     } else if (error.code === 'ECONNABORTED' || error.code === 'TIMEOUT') {
       throw new Error('QuickBooks API request timed out. Please try again.');
     } else {
-      throw new Error(`QuickBooks API error: ${error.response?.data?.Fault?.[0]?.Error?.[0]?.Detail || error.message}`);
+      const qbError = error.response?.data?.Fault?.[0]?.Error?.[0];
+      const errorDetail = qbError?.Detail || qbError?.code || error.message;
+      throw new Error(`QuickBooks API error: ${errorDetail}`);
     }
   }
 };
