@@ -14,13 +14,22 @@
         </header>
         
         <main>
-            <div class="actions">
-                <button id="fetch-data-btn" class="btn primary">
-                    🔄 Fetch Latest Data
-                </button>
+            <div class="controls">
+                <div class="month-selection">
+                    <label for="month-select">Select Month:</label>
+                    <select id="month-select" class="month-dropdown">
+                        <option value="">Loading months...</option>
+                    </select>
+                </div>
+                
+                <div class="actions">
+                                    <button id="fetch-data-btn" class="btn primary">
+                        🔄 Fetch Data
+                    </button>
                 <button id="refresh-qb-btn" class="btn secondary">
                     �� Refresh QB Customers
                 </button>
+                </div>
             </div>
             
             <div id="loading" class="loading hidden">
@@ -49,6 +58,89 @@
                 </button>
             </div>
         </main>
+    </div>
+    
+    <!-- Customer Pricing Setup Modal -->
+    <div id="pricing-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Setup Customer Pricing</h3>
+                <button class="close-btn" onclick="closePricingModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <p>Customer <strong id="customer-name"></strong> needs pricing setup.</p>
+                
+                <div class="pricing-form">
+                    <div class="form-group">
+                        <label>LTL Pricing Tiers:</label>
+                        <div class="tier-inputs">
+                            <div class="tier">
+                                <input type="number" id="ltl-tier1-min" placeholder="Min" value="0">
+                                <input type="number" id="ltl-tier1-max" placeholder="Max" value="50">
+                                <input type="number" id="ltl-tier1-rate" placeholder="Rate" value="25" step="0.01">
+                            </div>
+                            <div class="tier">
+                                <input type="number" id="ltl-tier2-min" placeholder="Min" value="51">
+                                <input type="number" id="ltl-tier2-max" placeholder="Max" value="100">
+                                <input type="number" id="ltl-tier2-rate" placeholder="Rate" value="20" step="0.01">
+                            </div>
+                            <div class="tier">
+                                <input type="number" id="ltl-tier3-min" placeholder="Min" value="101">
+                                <input type="text" id="ltl-tier3-max" placeholder="Max" value="unlimited" readonly>
+                                <input type="number" id="ltl-tier3-rate" placeholder="Rate" value="15" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Small Package Pricing Tiers:</label>
+                        <div class="tier-inputs">
+                            <div class="tier">
+                                <input type="number" id="sp-tier1-min" placeholder="Min" value="0">
+                                <input type="number" id="sp-tier1-max" placeholder="Max" value="500">
+                                <input type="number" id="sp-tier1-rate" placeholder="Rate" value="2" step="0.01">
+                            </div>
+                            <div class="tier">
+                                <input type="number" id="sp-tier2-min" placeholder="Min" value="501">
+                                <input type="number" id="sp-tier2-max" placeholder="Max" value="1000">
+                                <input type="number" id="sp-tier2-rate" placeholder="Rate" value="1.5" step="0.01">
+                            </div>
+                            <div class="tier">
+                                <input type="number" id="sp-tier3-min" placeholder="Min" value="1001">
+                                <input type="text" id="sp-tier3-max" placeholder="Max" value="unlimited" readonly>
+                                <input type="number" id="sp-tier3-rate" placeholder="Rate" value="1" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="storage-fee">Storage Fee:</label>
+                        <input type="number" id="storage-fee" placeholder="0" step="0.01">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contract-minimum">Contract Minimum:</label>
+                        <input type="number" id="contract-minimum" placeholder="0" step="0.01">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="payment-method">Payment Method:</label>
+                        <select id="payment-method">
+                            <option value="Net 30">Net 30</option>
+                            <option value="Net 15">Net 15</option>
+                            <option value="Due on Receipt">Due on Receipt</option>
+                            <option value="COD">COD</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn secondary" onclick="closePricingModal()">Cancel</button>
+                <button class="btn primary" onclick="savePricingData()">Save Pricing</button>
+            </div>
+        </div>
     </div>
     
     <script src="app.js"></script>

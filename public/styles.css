@@ -389,6 +389,154 @@ main {
     }
 }
 
+/* Controls */
+.controls {
+    margin-bottom: 2rem;
+}
+
+.month-selection {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.month-selection label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+.month-dropdown {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    color: #2d3748;
+    min-width: 200px;
+    transition: border-color 0.2s;
+}
+
+.month-dropdown:focus {
+    outline: none;
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #2d3748;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #718096;
+    padding: 0.25rem;
+    line-height: 1;
+}
+
+.close-btn:hover {
+    color: #2d3748;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+/* Pricing Form */
+.pricing-form {
+    margin-top: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.tier-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.tier {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.tier input[readonly] {
+    background: #f7fafc;
+    cursor: not-allowed;
+}
+
 /* Utility Classes */
 .hidden {
     display: none !important;
@@ -440,5 +588,37 @@ main {
         right: 10px;
         left: 10px;
         top: 10px;
+    }
+    
+    /* Modal responsive adjustments */
+    .modal-content {
+        margin: 20px;
+        max-width: calc(100vw - 40px);
+    }
+    
+    .tier {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .tier input {
+        margin-bottom: 0.25rem;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+    }
+    
+    .controls {
+        margin-bottom: 1rem;
+    }
+    
+    .month-selection {
+        margin-bottom: 1rem;
     }
 }

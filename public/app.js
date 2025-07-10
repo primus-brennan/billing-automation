@@ -20,11 +20,17 @@ class BillingApp {
         this.errorSection = document.getElementById('error-section');
         this.billingSection = document.getElementById('billing-summary');
         this.invoiceActions = document.getElementById('invoice-actions');
+        this.monthSelect = document.getElementById('month-select');
+        this.pricingModal = document.getElementById('pricing-modal');
         this.currentData = null;
         this.qbTokens = this.loadQBTokens();
+        this.currentCustomerForPricing = null;
         
         // Update UI based on QB connection status
         this.updateQBConnectionStatus();
+        
+        // Load available months
+        this.loadAvailableMonths();
     }
 
     bindEvents() {
@@ -42,6 +48,12 @@ class BillingApp {
 
         document.getElementById('create-qb-btn').addEventListener('click', () => {
             this.createQBInvoices();
+        });
+        
+        document.getElementById('month-select').addEventListener('change', (e) => {
+            if (e.target.value) {
+                this.fetchBillingData(e.target.value);
+            }
         });
     }
 
@@ -346,16 +358,26 @@ class BillingApp {
         this.invoiceActions.classList.add('hidden');
     }
 
-    async fetchBillingData() {
+    async fetchBillingData(selectedMonth = null) {
         try {
             this.showLoading('Fetching billing data...');
             
-            const data = await this.makeAPIRequest('fetch_billing_data');
+            const requestData = {};
+            if (selectedMonth) {
+                requestData.month = selectedMonth;
+            }
+            
+            const data = await this.makeAPIRequest('fetch_billing_data', requestData);
             
             this.hideLoading();
 
             if (data.errors && (data.errors.missing_customers.length > 0 || data.errors.unmapped_customers.length > 0)) {
                 this.showError(data.errors);
+                
+                // Show customer pricing setup for missing customers
+                if (data.errors.missing_customers.length > 0) {
+                    this.showCustomerPricingSetup(data.errors.missing_customers[0]);
+                }
             }
 
             if (data.billing_summary) {
@@ -381,16 +403,16 @@ class BillingApp {
             
             const data = await this.makeAPIRequest('refresh_qb_customers');
             
-            this.hideLoading();
+            console.log('QB Customers refresh result:', data);
             
             if (data.success) {
                 this.showNotification(data.message, 'success');
                 
-                // Refresh billing data to update QB status
-                if (this.currentData) {
-                    this.fetchBillingData();
-                }
+                // Always fetch billing data to show updated customer information
+                console.log('Fetching billing data after QB refresh...');
+                await this.fetchBillingData();
             } else {
+                this.hideLoading();
                 throw new Error(data.error);
             }
 
@@ -472,9 +494,130 @@ class BillingApp {
             notification.remove();
         }, 5000);
     }
+    
+    // Load available months for selection
+    async loadAvailableMonths() {
+        try {
+            const data = await this.makeAPIRequest('get_available_months');
+            
+            if (data.success) {
+                this.monthSelect.innerHTML = '<option value="">Select Month</option>';
+                
+                data.months.forEach(month => {
+                    const option = document.createElement('option');
+                    option.value = month;
+                    option.textContent = month;
+                    this.monthSelect.appendChild(option);
+                });
+                
+                // Select current month by default
+                if (data.months.length > 0) {
+                    this.monthSelect.value = data.months[0];
+                }
+            }
+        } catch (error) {
+            console.error('Error loading available months:', error);
+            this.monthSelect.innerHTML = '<option value="">Error loading months</option>';
+        }
+    }
+    
+    // Show customer pricing setup modal
+    showCustomerPricingSetup(customerName) {
+        this.currentCustomerForPricing = customerName;
+        document.getElementById('customer-name').textContent = customerName;
+        this.pricingModal.classList.remove('hidden');
+    }
+    
+    // Save customer pricing data
+    async saveCustomerPricing() {
+        try {
+            const customerName = this.currentCustomerForPricing;
+            
+            // Collect form data
+            const pricingData = {
+                ltl_pricing: {
+                    tiers: [
+                        {
+                            min: parseInt(document.getElementById('ltl-tier1-min').value) || 0,
+                            max: parseInt(document.getElementById('ltl-tier1-max').value) || 50,
+                            rate: parseFloat(document.getElementById('ltl-tier1-rate').value) || 25
+                        },
+                        {
+                            min: parseInt(document.getElementById('ltl-tier2-min').value) || 51,
+                            max: parseInt(document.getElementById('ltl-tier2-max').value) || 100,
+                            rate: parseFloat(document.getElementById('ltl-tier2-rate').value) || 20
+                        },
+                        {
+                            min: parseInt(document.getElementById('ltl-tier3-min').value) || 101,
+                            max: null,
+                            rate: parseFloat(document.getElementById('ltl-tier3-rate').value) || 15
+                        }
+                    ]
+                },
+                small_package_pricing: {
+                    tiers: [
+                        {
+                            min: parseInt(document.getElementById('sp-tier1-min').value) || 0,
+                            max: parseInt(document.getElementById('sp-tier1-max').value) || 500,
+                            rate: parseFloat(document.getElementById('sp-tier1-rate').value) || 2
+                        },
+                        {
+                            min: parseInt(document.getElementById('sp-tier2-min').value) || 501,
+                            max: parseInt(document.getElementById('sp-tier2-max').value) || 1000,
+                            rate: parseFloat(document.getElementById('sp-tier2-rate').value) || 1.5
+                        },
+                        {
+                            min: parseInt(document.getElementById('sp-tier3-min').value) || 1001,
+                            max: null,
+                            rate: parseFloat(document.getElementById('sp-tier3-rate').value) || 1
+                        }
+                    ]
+                },
+                storage_fee: parseFloat(document.getElementById('storage-fee').value) || 0,
+                contract_minimum: parseFloat(document.getElementById('contract-minimum').value) || 0,
+                payment_method: document.getElementById('payment-method').value || 'Net 30'
+            };
+            
+            // Save to backend
+            const response = await this.makeAPIRequest('save_customer_pricing', {
+                customerName: customerName,
+                pricingData: pricingData
+            });
+            
+            if (response.success) {
+                this.showNotification(response.message, 'success');
+                this.closePricingModal();
+                
+                // Refresh billing data
+                const selectedMonth = this.monthSelect.value;
+                this.fetchBillingData(selectedMonth);
+            } else {
+                throw new Error(response.error);
+            }
+            
+        } catch (error) {
+            this.showError({ general: [error.message] });
+            console.error('Error saving customer pricing:', error);
+        }
+    }
+    
+    // Close pricing modal
+    closePricingModal() {
+        this.pricingModal.classList.add('hidden');
+        this.currentCustomerForPricing = null;
+    }
+}
+
+// Global functions for modal controls
+function closePricingModal() {
+    window.billingApp.closePricingModal();
+}
+
+function savePricingData() {
+    window.billingApp.saveCustomerPricing();
 }
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new BillingApp();
+    window.billingApp = new BillingApp();
 }); 
