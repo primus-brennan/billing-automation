@@ -546,7 +546,106 @@ class BillingApp {
         
         this.currentCustomerForPricing = customerName;
         document.getElementById('customer-name').textContent = customerName;
+        
+        // Initialize with default tiers
+        this.initializePricingTiers();
+        
         this.pricingModal.classList.remove('hidden');
+    }
+    
+    // Initialize pricing tiers with default values
+    initializePricingTiers() {
+        // Clear existing tiers
+        document.getElementById('ltl-tiers-container').innerHTML = '';
+        document.getElementById('sp-tiers-container').innerHTML = '';
+        
+        // Add default LTL tiers
+        this.addLTLTier(0, 50, 25);
+        this.addLTLTier(51, 100, 20);
+        this.addLTLTier(101, null, 15);
+        
+        // Add default SP tiers
+        this.addSPTier(0, 500, 2);
+        this.addSPTier(501, 1000, 1.5);
+        this.addSPTier(1001, null, 1);
+        
+        // Reset checkbox
+        document.getElementById('use-ltl-pricing').checked = false;
+        document.getElementById('small-package-pricing-section').classList.remove('hidden');
+    }
+    
+    // Add LTL tier
+    addLTLTier(minVal = '', maxVal = '', rateVal = '') {
+        const container = document.getElementById('ltl-tiers-container');
+        const tierCount = container.children.length;
+        const tierId = `ltl-tier-${Date.now()}-${tierCount}`;
+        
+        const tierDiv = document.createElement('div');
+        tierDiv.className = 'tier';
+        tierDiv.innerHTML = `
+            <input type="number" name="ltl-min" placeholder="0" value="${minVal}" min="0">
+            <input type="number" name="ltl-max" placeholder="unlimited" value="${maxVal === null ? '' : maxVal}" min="0">
+            <input type="number" name="ltl-rate" placeholder="0.00" value="${rateVal}" step="0.01" min="0">
+            <div class="tier-actions">
+                <button type="button" class="remove-tier-btn" onclick="removeTier(this)">🗑️</button>
+            </div>
+        `;
+        
+        // Handle unlimited for last tier
+        if (maxVal === null) {
+            const maxInput = tierDiv.querySelector('input[name="ltl-max"]');
+            maxInput.placeholder = 'unlimited';
+            maxInput.readOnly = true;
+            maxInput.style.background = '#f7fafc';
+        }
+        
+        container.appendChild(tierDiv);
+    }
+    
+    // Add Small Package tier
+    addSPTier(minVal = '', maxVal = '', rateVal = '') {
+        const container = document.getElementById('sp-tiers-container');
+        const tierCount = container.children.length;
+        const tierId = `sp-tier-${Date.now()}-${tierCount}`;
+        
+        const tierDiv = document.createElement('div');
+        tierDiv.className = 'tier';
+        tierDiv.innerHTML = `
+            <input type="number" name="sp-min" placeholder="0" value="${minVal}" min="0">
+            <input type="number" name="sp-max" placeholder="unlimited" value="${maxVal === null ? '' : maxVal}" min="0">
+            <input type="number" name="sp-rate" placeholder="0.00" value="${rateVal}" step="0.01" min="0">
+            <div class="tier-actions">
+                <button type="button" class="remove-tier-btn" onclick="removeTier(this)">🗑️</button>
+            </div>
+        `;
+        
+        // Handle unlimited for last tier
+        if (maxVal === null) {
+            const maxInput = tierDiv.querySelector('input[name="sp-max"]');
+            maxInput.placeholder = 'unlimited';
+            maxInput.readOnly = true;
+            maxInput.style.background = '#f7fafc';
+        }
+        
+        container.appendChild(tierDiv);
+    }
+    
+    // Remove tier
+    removeTier(button) {
+        const tier = button.closest('.tier');
+        tier.remove();
+    }
+    
+    // Toggle small package pricing section
+    toggleSmallPackagePricing() {
+        const checkbox = document.getElementById('use-ltl-pricing');
+        const section = document.getElementById('small-package-pricing-section');
+        
+        if (checkbox.checked) {
+            section.classList.add('hidden');
+        } else {
+            section.classList.remove('hidden');
+        }
     }
     
     // Validate if a string is a valid customer name
@@ -596,50 +695,73 @@ class BillingApp {
         try {
             const customerName = this.currentCustomerForPricing;
             
+            // Collect LTL tiers
+            const ltlTiers = [];
+            const ltlContainer = document.getElementById('ltl-tiers-container');
+            const ltlTierDivs = ltlContainer.querySelectorAll('.tier');
+            
+            ltlTierDivs.forEach((tierDiv, index) => {
+                const minInput = tierDiv.querySelector('input[name="ltl-min"]');
+                const maxInput = tierDiv.querySelector('input[name="ltl-max"]');
+                const rateInput = tierDiv.querySelector('input[name="ltl-rate"]');
+                
+                const min = parseInt(minInput.value) || 0;
+                const maxValue = maxInput.value.trim();
+                const max = (maxValue === '' || maxValue === 'unlimited') ? null : parseInt(maxValue);
+                const rate = parseFloat(rateInput.value) || 0;
+                
+                if (rate > 0) {
+                    ltlTiers.push({ min, max, rate });
+                }
+            });
+            
+            // Collect Small Package tiers (if not using LTL pricing)
+            const useLTLPricing = document.getElementById('use-ltl-pricing').checked;
+            let smallPackageTiers = [];
+            
+            if (!useLTLPricing) {
+                const spContainer = document.getElementById('sp-tiers-container');
+                const spTierDivs = spContainer.querySelectorAll('.tier');
+                
+                spTierDivs.forEach((tierDiv, index) => {
+                    const minInput = tierDiv.querySelector('input[name="sp-min"]');
+                    const maxInput = tierDiv.querySelector('input[name="sp-max"]');
+                    const rateInput = tierDiv.querySelector('input[name="sp-rate"]');
+                    
+                    const min = parseInt(minInput.value) || 0;
+                    const maxValue = maxInput.value.trim();
+                    const max = (maxValue === '' || maxValue === 'unlimited') ? null : parseInt(maxValue);
+                    const rate = parseFloat(rateInput.value) || 0;
+                    
+                    if (rate > 0) {
+                        smallPackageTiers.push({ min, max, rate });
+                    }
+                });
+            } else {
+                // Use LTL pricing structure for small packages
+                smallPackageTiers = ltlTiers;
+            }
+            
             // Collect form data
             const pricingData = {
                 ltl_pricing: {
-                    tiers: [
-                        {
-                            min: parseInt(document.getElementById('ltl-tier1-min').value) || 0,
-                            max: parseInt(document.getElementById('ltl-tier1-max').value) || 50,
-                            rate: parseFloat(document.getElementById('ltl-tier1-rate').value) || 25
-                        },
-                        {
-                            min: parseInt(document.getElementById('ltl-tier2-min').value) || 51,
-                            max: parseInt(document.getElementById('ltl-tier2-max').value) || 100,
-                            rate: parseFloat(document.getElementById('ltl-tier2-rate').value) || 20
-                        },
-                        {
-                            min: parseInt(document.getElementById('ltl-tier3-min').value) || 101,
-                            max: null,
-                            rate: parseFloat(document.getElementById('ltl-tier3-rate').value) || 15
-                        }
-                    ]
+                    tiers: ltlTiers
                 },
                 small_package_pricing: {
-                    tiers: [
-                        {
-                            min: parseInt(document.getElementById('sp-tier1-min').value) || 0,
-                            max: parseInt(document.getElementById('sp-tier1-max').value) || 500,
-                            rate: parseFloat(document.getElementById('sp-tier1-rate').value) || 2
-                        },
-                        {
-                            min: parseInt(document.getElementById('sp-tier2-min').value) || 501,
-                            max: parseInt(document.getElementById('sp-tier2-max').value) || 1000,
-                            rate: parseFloat(document.getElementById('sp-tier2-rate').value) || 1.5
-                        },
-                        {
-                            min: parseInt(document.getElementById('sp-tier3-min').value) || 1001,
-                            max: null,
-                            rate: parseFloat(document.getElementById('sp-tier3-rate').value) || 1
-                        }
-                    ]
+                    tiers: smallPackageTiers,
+                    use_ltl_pricing: useLTLPricing
                 },
                 storage_fee: parseFloat(document.getElementById('storage-fee').value) || 0,
                 contract_minimum: parseFloat(document.getElementById('contract-minimum').value) || 0,
                 payment_method: document.getElementById('payment-method').value || 'Net 30'
             };
+            
+            console.log('Saving pricing data:', pricingData);
+            
+            // Validate that we have at least one tier
+            if (ltlTiers.length === 0) {
+                throw new Error('Please add at least one LTL pricing tier.');
+            }
             
             // Save to backend
             const response = await this.makeAPIRequest('save_customer_pricing', {
@@ -678,6 +800,22 @@ function closePricingModal() {
 
 function savePricingData() {
     window.billingApp.saveCustomerPricing();
+}
+
+function addLTLTier() {
+    window.billingApp.addLTLTier();
+}
+
+function addSPTier() {
+    window.billingApp.addSPTier();
+}
+
+function removeTier(button) {
+    window.billingApp.removeTier(button);
+}
+
+function toggleSmallPackagePricing() {
+    window.billingApp.toggleSmallPackagePricing();
 }
 
 // Initialize the app when DOM is loaded
