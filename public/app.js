@@ -800,13 +800,24 @@ class BillingApp {
                 throw new Error('Please add at least one LTL pricing tier.');
             }
             
+            // Validate required fields
+            const contractMinimum = parseFloat(document.getElementById('contract-minimum').value);
+            if (isNaN(contractMinimum) || contractMinimum < 0) {
+                throw new Error('Contract minimum is required and must be a valid number.');
+            }
+            
+            const qbCustomerId = document.getElementById('qb-customer-select').value;
+            if (!qbCustomerId) {
+                throw new Error('Please select a QuickBooks customer for invoicing.');
+            }
+            
             // Save to backend
             const response = await this.makeAPIRequest('save_customer_pricing', {
                 customerName: customerName,
                 pricingData: pricingData
             });
             
-            if (response.success) {
+            if (response && response.success) {
                 this.showNotification(response.message, 'success');
                 this.closePricingModal();
                 
@@ -814,7 +825,7 @@ class BillingApp {
                 const selectedMonth = this.monthSelect.value;
                 this.fetchBillingData(selectedMonth);
             } else {
-                throw new Error(response.error);
+                throw new Error(response?.error || 'Failed to save customer pricing');
             }
             
         } catch (error) {
@@ -846,30 +857,25 @@ class BillingApp {
             statusText.innerHTML = '<span class="loading-indicator">🔄</span> Loading QuickBooks customers...';
             statusText.style.color = '#4a5568';
             
-            // Fetch QB customers using the existing refresh function
-            const response = await this.makeAPIRequest('refresh_qb_customers');
+            // Get QB customers directly
+            const qbCustomersResponse = await this.makeAPIRequest('get_qb_customers');
             
-            if (response.success) {
-                // Get the actual customer list
-                const qbCustomersResponse = await this.makeAPIRequest('get_qb_customers');
+            console.log('QB customers response:', qbCustomersResponse);
+            
+            if (qbCustomersResponse && qbCustomersResponse.success && qbCustomersResponse.customers) {
+                select.innerHTML = '<option value="">Select QuickBooks Customer (REQUIRED)</option>';
                 
-                if (qbCustomersResponse.success && qbCustomersResponse.customers) {
-                    select.innerHTML = '<option value="">Select QuickBooks Customer (optional)</option>';
-                    
-                    qbCustomersResponse.customers.forEach(customer => {
-                        const option = document.createElement('option');
-                        option.value = customer.Id;
-                        option.textContent = customer.Name;
-                        select.appendChild(option);
-                    });
-                    
-                    statusText.innerHTML = `✅ Found ${qbCustomersResponse.customers.length} QuickBooks customers`;
-                    statusText.style.color = '#38a169';
-                } else {
-                    throw new Error('Failed to load customer details');
-                }
+                qbCustomersResponse.customers.forEach(customer => {
+                    const option = document.createElement('option');
+                    option.value = customer.Id;
+                    option.textContent = customer.Name || customer.CompanyName;
+                    select.appendChild(option);
+                });
+                
+                statusText.innerHTML = `✅ Found ${qbCustomersResponse.customers.length} QuickBooks customers`;
+                statusText.style.color = '#38a169';
             } else {
-                throw new Error(response.error || 'Failed to refresh QuickBooks customers');
+                throw new Error('Failed to load QuickBooks customers: ' + (qbCustomersResponse?.error || 'Unknown error'));
             }
             
         } catch (error) {

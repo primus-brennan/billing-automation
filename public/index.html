@@ -126,15 +126,15 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="contract-minimum">💰 Contract Minimum:</label>
-                        <p class="field-description">Minimum monthly billing amount (optional)</p>
-                        <input type="number" id="contract-minimum" placeholder="0.00" step="0.01">
+                        <label for="contract-minimum">💰 Contract Minimum: <span style="color: red;">*</span></label>
+                        <p class="field-description">Minimum monthly billing amount (required)</p>
+                        <input type="number" id="contract-minimum" placeholder="0.00" step="0.01" required>
                     </div>
                     
                     <div class="form-group">
-                        <label for="qb-customer-select">📊 QuickBooks Customer:</label>
-                        <p class="field-description">Link to existing QuickBooks customer for invoicing</p>
-                        <select id="qb-customer-select">
+                        <label for="qb-customer-select">📊 QuickBooks Customer: <span style="color: red;">*</span></label>
+                        <p class="field-description">Link to existing QuickBooks customer for invoicing (required)</p>
+                        <select id="qb-customer-select" required>
                             <option value="">Loading QuickBooks customers...</option>
                         </select>
                         <p class="qb-status-text" id="qb-status-text">
