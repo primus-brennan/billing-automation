@@ -139,8 +139,9 @@ const getQBCustomers = async (accessToken, companyId) => {
     console.log('Company info test failed:', testError.response?.status, testError.response?.data);
   }
 
-  // Now try to get customers using the correct query syntax
-  const url = `${QB_CONFIG.baseUrl}/v3/company/${companyId}/query?query=SELECT * FROM Customer MAXRESULTS 20`;
+  // Now try to get customers using the specific query format
+  const query = "select * from Customer Where Metadata.LastUpdatedTime > '2015-03-01'";
+  const url = `${QB_CONFIG.baseUrl}/v3/company/${companyId}/query?query=${encodeURIComponent(query)}&minorversion=75`;
   console.log('QB API Request URL:', url);
   
   try {
