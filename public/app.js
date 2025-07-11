@@ -679,11 +679,33 @@ class BillingApp {
             return false;
         }
         
+        // Must not be date formats
+        if (trimmedName.match(/^[A-Za-z]+-\d{4}$/)) { // Month-Year format (e.g., "August-2022")
+            return false;
+        }
+        
+        if (trimmedName.match(/^[A-Za-z]+\s+\d{4}$/)) { // Month Year format (e.g., "August 2022")
+            return false;
+        }
+        
+        if (trimmedName.match(/^\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}$/)) { // Date formats
+            return false;
+        }
+        
+        if (trimmedName.match(/^\d{4}-\d{2}-\d{2}$/)) { // YYYY-MM-DD format
+            return false;
+        }
+        
+        // Must not be month names
+        if (this.isMonthName(trimmedName)) {
+            return false;
+        }
+        
         // Must not be common non-customer terms
         const invalidTerms = [
             'total', 'sum', 'date', 'month', 'year', 'customer', 'name', 
             'ltl', 'package', 'shipment', 'report', 'data', 'undefined', 
-            'null', 'error', 'loading', 'n/a', 'na', 'none'
+            'null', 'error', 'loading', 'n/a', 'na', 'none', 'period'
         ];
         
         if (invalidTerms.includes(trimmedName.toLowerCase())) {
@@ -691,6 +713,17 @@ class BillingApp {
         }
         
         return true;
+    }
+    
+    // Helper function to check if string is a month name
+    isMonthName(str) {
+        const months = [
+            'january', 'february', 'march', 'april', 'may', 'june',
+            'july', 'august', 'september', 'october', 'november', 'december',
+            'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+            'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+        ];
+        return months.includes(str.toLowerCase().trim());
     }
     
     // Save customer pricing data

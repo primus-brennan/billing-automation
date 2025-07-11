@@ -272,11 +272,19 @@ const fetchBillingDataFromSource = async (month = null) => {
         if (cell0 && 
             !cell0.match(/^\d{4}$/) && // Not a 4-digit year
             !cell0.match(/^\d+$/) && // Not just a number
+            !cell0.match(/^[A-Za-z]+-\d{4}$/) && // Not Month-Year format (e.g., "August-2022")
+            !cell0.match(/^[A-Za-z]+\s+\d{4}$/) && // Not Month Year format (e.g., "August 2022")
+            !cell0.match(/^\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}$/) && // Not date format
+            !cell0.match(/^\d{4}-\d{2}-\d{2}$/) && // Not YYYY-MM-DD format
             cell0.length > 3 && // At least 4 characters
             cell0.match(/[a-zA-Z]/) && // Contains letters
             !cell0.toLowerCase().includes('total') && // Not a total row
             !cell0.toLowerCase().includes('date') && // Not a date header
-            !cell0.toLowerCase().includes('customer') // Not a header
+            !cell0.toLowerCase().includes('customer') && // Not a header
+            !cell0.toLowerCase().includes('month') && // Not a month header
+            !cell0.toLowerCase().includes('year') && // Not a year header
+            !cell0.toLowerCase().includes('period') && // Not a period header
+            !isMonthName(cell0) // Not a standalone month name
         ) {
           const ltlShipments = parseInt(cell1) || 0;
           const smallPackageShipments = parseInt(cell2) || 0;
@@ -288,6 +296,9 @@ const fetchBillingDataFromSource = async (month = null) => {
               month: month || getCurrentMonth()
             };
           }
+        } else if (cell0 && cell0.trim()) {
+          // Log filtered out entries for debugging
+          console.log(`🚫 Filtered out entry: "${cell0}"`);
         }
       }
     });
@@ -391,6 +402,17 @@ const getCurrentMonth = () => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
   return `${months[now.getMonth()]} ${now.getFullYear()}`;
+};
+
+// Helper function to check if string is a month name
+const isMonthName = (str) => {
+  const months = [
+    'january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december',
+    'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+    'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+  ];
+  return months.includes(str.toLowerCase().trim());
 };
 
 // Get available months for selection
