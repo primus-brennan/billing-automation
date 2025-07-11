@@ -550,6 +550,9 @@ class BillingApp {
         // Initialize with default tiers
         this.initializePricingTiers();
         
+        // Load QuickBooks customers for selection
+        this.loadQBCustomersForPricing();
+        
         this.pricingModal.classList.remove('hidden');
     }
     
@@ -753,7 +756,8 @@ class BillingApp {
                 },
                 storage_fee: parseFloat(document.getElementById('storage-fee').value) || 0,
                 contract_minimum: parseFloat(document.getElementById('contract-minimum').value) || 0,
-                payment_method: document.getElementById('payment-method').value || 'Net 30'
+                payment_method: document.getElementById('payment-method').value || 'Net 30',
+                qb_customer_id: document.getElementById('qb-customer-select').value || null
             };
             
             console.log('Saving pricing data:', pricingData);
@@ -790,6 +794,57 @@ class BillingApp {
     closePricingModal() {
         this.pricingModal.classList.add('hidden');
         this.currentCustomerForPricing = null;
+    }
+    
+    // Load QuickBooks customers for pricing assignment
+    async loadQBCustomersForPricing() {
+        const select = document.getElementById('qb-customer-select');
+        const statusText = document.getElementById('qb-status-text');
+        
+        // Check if QuickBooks is connected
+        if (!this.qbTokens) {
+            select.innerHTML = '<option value="">QuickBooks not connected</option>';
+            statusText.innerHTML = '⚠️ QuickBooks not connected. <a href="#" onclick="window.billingApp.connectQuickBooks()">Connect QuickBooks</a> to link customers.';
+            statusText.style.color = '#f56565';
+            return;
+        }
+        
+        try {
+            statusText.innerHTML = '<span class="loading-indicator">🔄</span> Loading QuickBooks customers...';
+            statusText.style.color = '#4a5568';
+            
+            // Fetch QB customers using the existing refresh function
+            const response = await this.makeAPIRequest('refresh_qb_customers');
+            
+            if (response.success) {
+                // Get the actual customer list
+                const qbCustomersResponse = await this.makeAPIRequest('get_qb_customers');
+                
+                if (qbCustomersResponse.success && qbCustomersResponse.customers) {
+                    select.innerHTML = '<option value="">Select QuickBooks Customer (optional)</option>';
+                    
+                    qbCustomersResponse.customers.forEach(customer => {
+                        const option = document.createElement('option');
+                        option.value = customer.Id;
+                        option.textContent = customer.Name;
+                        select.appendChild(option);
+                    });
+                    
+                    statusText.innerHTML = `✅ Found ${qbCustomersResponse.customers.length} QuickBooks customers`;
+                    statusText.style.color = '#38a169';
+                } else {
+                    throw new Error('Failed to load customer details');
+                }
+            } else {
+                throw new Error(response.error || 'Failed to refresh QuickBooks customers');
+            }
+            
+        } catch (error) {
+            console.error('Error loading QB customers for pricing:', error);
+            select.innerHTML = '<option value="">Error loading customers</option>';
+            statusText.innerHTML = `❌ ${error.message}`;
+            statusText.style.color = '#f56565';
+        }
     }
 }
 

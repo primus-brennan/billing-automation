@@ -639,6 +639,35 @@ main {
     display: none;
 }
 
+/* QuickBooks Status Styling */
+.qb-status-text {
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.qb-status-text a {
+    color: #4299e1;
+    text-decoration: underline;
+}
+
+.qb-status-text a:hover {
+    color: #2b6cb0;
+}
+
+.loading-indicator {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 /* Utility Classes */
 .hidden {
     display: none !important;

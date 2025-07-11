@@ -452,6 +452,7 @@ const saveCustomerPricing = async (customerName, pricingData) => {
       storage_fee: pricingData.storage_fee || 0,
       contract_minimum: pricingData.contract_minimum || 0,
       payment_method: pricingData.payment_method || 'Net 30',
+      qb_customer_id: pricingData.qb_customer_id || null,
       other_pricing: pricingData.other_pricing || {}
     };
     
@@ -605,6 +606,43 @@ const refreshQuickBooksCustomers = async (accessToken, companyId) => {
     };
   } catch (error) {
     console.error('refreshQuickBooksCustomers error:', error);
+    return {
+      success: false,
+      error: error.message,
+      needs_auth: error.message.includes('access token') || error.message.includes('expired')
+    };
+  }
+};
+
+// Get QuickBooks customers list for selection
+const getQuickBooksCustomersList = async (accessToken, companyId) => {
+  console.log('getQuickBooksCustomersList called');
+
+  if (!accessToken || !companyId) {
+    return {
+      success: false,
+      error: 'QuickBooks not connected. Please authenticate first.',
+      needs_auth: true
+    };
+  }
+
+  try {
+    const qbCustomers = await getQBCustomers(accessToken, companyId);
+    
+    console.log('Successfully fetched QB customers for selection:', qbCustomers.length);
+    
+    // Return the customer data for dropdown population
+    return {
+      success: true,
+      customers: qbCustomers.map(customer => ({
+        Id: customer.Id,
+        Name: customer.Name,
+        CompanyName: customer.CompanyName || customer.Name,
+        Active: customer.Active
+      }))
+    };
+  } catch (error) {
+    console.error('getQuickBooksCustomersList error:', error);
     return {
       success: false,
       error: error.message,
@@ -802,6 +840,14 @@ exports.handler = async (event, context) => {
           body: JSON.stringify(qbResult)
         };
       
+      case 'get_qb_customers':
+        const qbCustomersResult = await getQuickBooksCustomersList(accessToken, companyId);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(qbCustomersResult)
+        };
+      
       case 'create_qb_invoices':
         if (!body.data) {
           throw new Error('No billing data provided for invoice creation');
@@ -839,6 +885,7 @@ exports.handler = async (event, context) => {
               'qb_auth_url',
               'qb_exchange_token',
               'refresh_qb_customers',
+              'get_qb_customers',
               'create_qb_invoices',
               'approve_invoices'
             ]

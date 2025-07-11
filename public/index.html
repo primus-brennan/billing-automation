@@ -132,6 +132,17 @@
                     </div>
                     
                     <div class="form-group">
+                        <label for="qb-customer-select">📊 QuickBooks Customer:</label>
+                        <p class="field-description">Link to existing QuickBooks customer for invoicing</p>
+                        <select id="qb-customer-select">
+                            <option value="">Loading QuickBooks customers...</option>
+                        </select>
+                        <p class="qb-status-text" id="qb-status-text">
+                            <span class="loading-indicator">🔄</span> Loading QuickBooks customers...
+                        </p>
+                    </div>
+                    
+                    <div class="form-group">
                         <label for="payment-method">📋 Payment Terms:</label>
                         <p class="field-description">Invoice payment terms</p>
                         <select id="payment-method">
