@@ -8,7 +8,8 @@ const QB_CONFIG = {
   clientId: process.env.QBCLIENT_ID,
   clientSecret: process.env.QBCLIENT_SECRET,
   redirectUri: process.env.QB_REDIRECT_URI || 'https://primusqb.netlify.app/',
-  baseUrl: process.env.QB_SANDBOX === 'false' ? 'https://quickbooks.api.intuit.com' : 'https://sandbox-quickbooks.api.intuit.com',
+  // Force production URL based on user requirements
+  baseUrl: 'https://quickbooks.api.intuit.com',
   discoveryUrl: 'https://appcenter.intuit.com/connect/oauth2'
 };
 
@@ -111,14 +112,30 @@ const getQBCustomers = async (accessToken, companyId) => {
   console.log('getQBCustomers called with:', {
     hasAccessToken: !!accessToken,
     companyId: companyId,
+    expectedCompanyId: '1181726965',
+    companyIdMatch: companyId === '1181726965',
     baseUrl: QB_CONFIG.baseUrl,
-    isSandbox: process.env.QB_SANDBOX !== 'false'
+    expectedBaseUrl: 'https://quickbooks.api.intuit.com',
+    baseUrlMatch: QB_CONFIG.baseUrl === 'https://quickbooks.api.intuit.com',
+    QB_SANDBOX_env: process.env.QB_SANDBOX,
+    allEnvVars: {
+      QBCLIENT_ID: !!process.env.QBCLIENT_ID,
+      QBCLIENT_SECRET: !!process.env.QBCLIENT_SECRET,
+      QB_REDIRECT_URI: process.env.QB_REDIRECT_URI,
+      QB_SANDBOX: process.env.QB_SANDBOX
+    }
   });
   
   if (!accessToken || !companyId) {
     const error = `Missing QuickBooks credentials - Access Token: ${!!accessToken}, Company ID: ${!!companyId}`;
     console.error(error);
     throw new Error(error);
+  }
+
+  // Check if company ID matches expected value
+  if (companyId !== '1181726965') {
+    console.warn(`Company ID mismatch! Using: ${companyId}, Expected: 1181726965`);
+    console.warn('This may be why customers are not loading. Please reconnect to QuickBooks.');
   }
 
   // First try to get company info to test basic connectivity
@@ -142,7 +159,13 @@ const getQBCustomers = async (accessToken, companyId) => {
   // Now try to get customers using the specific query format
   const query = "select * from Customer Where Metadata.LastUpdatedTime > '2015-03-01'";
   const url = `${QB_CONFIG.baseUrl}/v3/company/${companyId}/query?query=${encodeURIComponent(query)}&minorversion=75`;
+  const expectedUrl = `https://quickbooks.api.intuit.com/v3/company/1181726965/query?query=${encodeURIComponent(query)}&minorversion=75`;
+  
   console.log('QB API Request URL:', url);
+  console.log('Expected URL:', expectedUrl);
+  console.log('URLs match:', url === expectedUrl);
+  console.log('Company ID being used:', companyId);
+  console.log('Expected Company ID:', '1181726965');
   
   try {
     const response = await axios.get(url, {
@@ -744,6 +767,42 @@ const approveInvoices = async (billingData) => {
   };
 };
 
+// Test QuickBooks API with specific company ID
+const testQBAPIWithCompanyId = async (accessToken, specificCompanyId = '1181726965') => {
+  console.log('Testing QB API with specific company ID:', specificCompanyId);
+  
+  const query = "select * from Customer Where Metadata.LastUpdatedTime > '2015-03-01'";
+  const url = `https://quickbooks.api.intuit.com/v3/company/${specificCompanyId}/query?query=${encodeURIComponent(query)}&minorversion=75`;
+  
+  console.log('Test URL:', url);
+  
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      },
+      timeout: 10000
+    });
+    
+    console.log('Test API Response Status:', response.status);
+    console.log('Test API Response Data:', JSON.stringify(response.data, null, 2));
+    
+    return {
+      success: true,
+      customers: response.data.QueryResponse?.Customer || [],
+      message: `Successfully retrieved ${response.data.QueryResponse?.Customer?.length || 0} customers`
+    };
+  } catch (error) {
+    console.error('Test API Error:', error.response?.data || error.message);
+    return {
+      success: false,
+      error: error.message,
+      details: error.response?.data
+    };
+  }
+};
+
 exports.handler = async (event, context) => {
   // Set CORS headers
   const headers = {
@@ -870,6 +929,14 @@ exports.handler = async (event, context) => {
           headers,
           body: JSON.stringify(qbCustomersResult)
         };
+
+      case 'test_qb_api':
+        const testResult = await testQBAPIWithCompanyId(accessToken, body.companyId);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(testResult)
+        };
       
       case 'create_qb_invoices':
         if (!body.data) {
@@ -909,6 +976,7 @@ exports.handler = async (event, context) => {
               'qb_exchange_token',
               'refresh_qb_customers',
               'get_qb_customers',
+              'test_qb_api',
               'create_qb_invoices',
               'approve_invoices'
             ]

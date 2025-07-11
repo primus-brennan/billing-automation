@@ -66,6 +66,14 @@ class BillingApp {
                 this.connectQuickBooks();
             }
         });
+        
+        // Add test QB API button if it exists
+        const testQBBtn = document.getElementById('test-qb-api-btn');
+        if (testQBBtn) {
+            testQBBtn.addEventListener('click', () => {
+                this.testQBAPI();
+            });
+        }
     }
 
     // QuickBooks Token Management
@@ -878,6 +886,36 @@ class BillingApp {
         this.currentCustomerForPricing = null;
     }
     
+    // Test QB API with specific company ID
+    async testQBAPI() {
+        if (!this.qbTokens) {
+            this.showError({ general: ['Please connect to QuickBooks first'] });
+            return;
+        }
+        
+        try {
+            this.showLoading('Testing QuickBooks API...');
+            
+            const response = await this.makeAPIRequest('test_qb_api', {
+                companyId: '1181726965'
+            });
+            
+            this.hideLoading();
+            
+            if (response.success) {
+                this.showNotification(`✅ Test successful! Found ${response.customers.length} customers`, 'success');
+                console.log('Test API Response:', response);
+            } else {
+                this.showError({ general: [`Test failed: ${response.error}`] });
+                console.error('Test API Error:', response);
+            }
+        } catch (error) {
+            this.hideLoading();
+            this.showError({ general: [`Test failed: ${error.message}`] });
+            console.error('Test QB API error:', error);
+        }
+    }
+
     // Load QuickBooks customers for pricing assignment
     async loadQBCustomersForPricing() {
         const select = document.getElementById('qb-customer-select');
