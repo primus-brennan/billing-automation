@@ -55,6 +55,17 @@ class BillingApp {
                 this.fetchBillingData(e.target.value);
             }
         });
+        
+        // QB Connect button
+        document.getElementById('qb-connect-btn').addEventListener('click', () => {
+            if (this.qbTokens) {
+                // If already connected, disconnect
+                this.clearQBTokens();
+            } else {
+                // If not connected, connect
+                this.connectQuickBooks();
+            }
+        });
     }
 
     // QuickBooks Token Management
@@ -78,15 +89,42 @@ class BillingApp {
     updateQBConnectionStatus() {
         const refreshBtn = document.getElementById('refresh-qb-btn');
         const createBtn = document.getElementById('create-qb-btn');
+        const qbConnectBtn = document.getElementById('qb-connect-btn');
+        const qbStatusIndicator = document.getElementById('qb-status-indicator');
+        const qbStatusText = document.getElementById('qb-status-text-main');
+        const qbConnectionStatus = document.getElementById('qb-connection-status');
         
         if (this.qbTokens) {
+            // Update main buttons
             refreshBtn.innerHTML = '🔄 Refresh QB Customers';
             refreshBtn.classList.remove('needs-auth');
             createBtn.classList.remove('needs-auth');
+            
+            // Update connection status in header
+            qbStatusIndicator.textContent = '✅';
+            qbStatusIndicator.classList.remove('disconnected');
+            qbStatusIndicator.classList.add('connected');
+            qbStatusText.textContent = 'Connected to QuickBooks';
+            qbConnectionStatus.classList.add('connected');
+            qbConnectBtn.innerHTML = '🔓 Disconnect';
+            qbConnectBtn.classList.remove('primary');
+            qbConnectBtn.classList.add('secondary');
+            
         } else {
+            // Update main buttons
             refreshBtn.innerHTML = '🔗 Connect QuickBooks';
             refreshBtn.classList.add('needs-auth');
             createBtn.classList.add('needs-auth');
+            
+            // Update connection status in header
+            qbStatusIndicator.textContent = '❌';
+            qbStatusIndicator.classList.remove('connected');
+            qbStatusIndicator.classList.add('disconnected');
+            qbStatusText.textContent = 'Not connected to QuickBooks';
+            qbConnectionStatus.classList.remove('connected');
+            qbConnectBtn.innerHTML = '🔗 Connect to QuickBooks';
+            qbConnectBtn.classList.remove('secondary');
+            qbConnectBtn.classList.add('primary');
         }
     }
 

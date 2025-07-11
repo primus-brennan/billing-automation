@@ -36,6 +36,48 @@ header p {
     opacity: 0.9;
 }
 
+/* QuickBooks Connection Status */
+.qb-connection-status {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.qb-connection-status.connected {
+    border-color: #38a169;
+    background: rgba(240, 255, 244, 0.9);
+}
+
+.qb-status-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-indicator {
+    font-size: 1.2rem;
+}
+
+.status-indicator.connected {
+    color: #38a169;
+}
+
+.status-indicator.disconnected {
+    color: #e53e3e;
+}
+
+.status-text {
+    font-weight: 500;
+    color: #2d3748;
+}
+
 /* Main Content */
 main {
     background: white;
@@ -767,5 +809,10 @@ main {
     
     .month-selection {
         margin-bottom: 1rem;
+    }
+    
+    .qb-connection-status {
+        flex-direction: column;
+        text-align: center;
     }
 }

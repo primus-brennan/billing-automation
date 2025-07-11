@@ -11,6 +11,17 @@
         <header>
             <h1>📊 Billing Automation System</h1>
             <p>Automated billing with QuickBooks Online integration</p>
+            
+            <!-- QuickBooks Connection Status -->
+            <div id="qb-connection-status" class="qb-connection-status">
+                <div class="qb-status-info">
+                    <span id="qb-status-indicator" class="status-indicator disconnected">❌</span>
+                    <span id="qb-status-text-main" class="status-text">Not connected to QuickBooks</span>
+                </div>
+                <button id="qb-connect-btn" class="btn primary">
+                    🔗 Connect to QuickBooks
+                </button>
+            </div>
         </header>
         
         <main>
